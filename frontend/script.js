@@ -3,7 +3,7 @@ console.log("MULTI-TAB TRANSCRIBE + AI NOTES v4 LOADED");
 const CHUNK_DURATION = 30000;
 let sessionCounter = 0;
 const sessions = {};
-const api = "https://transcribe-1-9778.onrender.com";
+const api = "https://transcribe-h8gf.onrender.com";
 
 // -------------------- SESSION FACTORY --------------------
 function createSession(id) {
