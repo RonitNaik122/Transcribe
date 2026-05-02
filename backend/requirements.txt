@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+faster-whisper
+pydantic
+yt-dlp
+google-genai
+fpdf2
+python-dotenv
+python-multipart

@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transcribe — Multi-Tab + AI Notes</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0e0e0f;
+        --surface: #161618;
+        --surface2: #1e1e21;
+        --surface3: #232326;
+        --border: rgba(255, 255, 255, 0.07);
+        --border-active: rgba(255, 255, 255, 0.15);
+        --text: #f0efe8;
+        --text-muted: #97958d;
+        --text-dim: #808080;
+        --accent: #d4f57a;
+        --accent-dim: rgba(212, 245, 122, 0.08);
+        --accent-dim2: rgba(212, 245, 122, 0.14);
+        --red: #ff5f5f;
+        --red-dim: rgba(255, 95, 95, 0.1);
+        --mono: "DM Mono", monospace;
+        --sans: "DM Sans", sans-serif;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        padding: 0 24px;
+      }
+
+      /* ---- HEADER ---- */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 0 20px;
+        border-bottom: 1px solid var(--border);
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .logo-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo-icon svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .logo-name {
+        font-family: var(--mono);
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      /* API KEY INPUT */
+      .api-key-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0 10px;
+        height: 36px;
+      }
+
+      .api-key-wrap svg {
+        width: 12px;
+        height: 12px;
+        color: var(--text-dim);
+        flex-shrink: 0;
+      }
+
+      #apiKeyInput {
+        background: transparent;
+        border: none;
+        outline: none;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        width: 230px;
+        letter-spacing: 0.03em;
+      }
+
+      #apiKeyInput::placeholder {
+        color: var(--text-dim);
+      }
+
+      #apiKeyInput:focus {
+        color: var(--text);
+      }
+
+      /* ADD SESSION BTN */
+      #addSession {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        cursor: pointer;
+        background: var(--accent-dim);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        transition: all 0.2s ease;
+        height: 36px;
+      }
+
+      #addSession:hover {
+        background: var(--accent-dim2);
+      }
+      #addSession svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      /* ---- MAIN ---- */
+      main {
+        flex: 1;
+        max-width: 1160px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 32px 0 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .page-title {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 400;
+        color: var(--text-muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      /* EMPTY STATE */
+      #empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 72px 24px;
+        border: 1px dashed var(--border-active);
+        border-radius: 16px;
+        background: var(--surface);
+        text-align: center;
+      }
+
+      .empty-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .empty-icon svg {
+        width: 22px;
+        height: 22px;
+        color: var(--text-dim);
+      }
+
+      .empty-title {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--text-muted);
+        letter-spacing: 0.04em;
+      }
+
+      .empty-sub {
+        font-size: 13px;
+        color: var(--text-dim);
+        font-weight: 300;
+        max-width: 320px;
+        line-height: 1.7;
+      }
+
+      .btn-empty-add {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        cursor: pointer;
+        background: var(--accent-dim);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        transition: all 0.2s ease;
+      }
+
+      .btn-empty-add:hover {
+        background: var(--accent-dim2);
+      }
+
+      .btn-empty-add svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      /* SESSIONS GRID */
+      #sessions-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+        gap: 16px;
+        align-items: start;
+      }
+
+      /* ---- SESSION PANEL ---- */
+      .session-panel {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--surface);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 14px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .session-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+      }
+
+      .session-type-badge {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+      }
+
+      .session-type-badge.yt {
+        border-color: rgba(255, 80, 80, 0.35);
+        color: #ff7070;
+        background: rgba(255, 80, 80, 0.07);
+      }
+
+      .session-type-badge.live {
+        border-color: rgba(212, 245, 122, 0.3);
+        color: var(--accent);
+        background: var(--accent-dim);
+      }
+
+      .panel-actions {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      /* STATUS PILL */
+      .status-pill {
+        font-family: var(--mono);
+        font-size: 10px;
+        font-weight: 400;
+        padding: 3px 8px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.3s ease;
+      }
+
+      .status-pill .dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--text-dim);
+        transition: all 0.3s ease;
+      }
+
+      .status-pill.recording {
+        border-color: var(--red);
+        color: var(--red);
+        background: var(--red-dim);
+      }
+      .status-pill.recording .dot {
+        background: var(--red);
+        animation: pulse 1.2s ease infinite;
+      }
+      .status-pill.transcribing {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-dim);
+      }
+      .status-pill.transcribing .dot {
+        background: var(--accent);
+        animation: pulse 0.8s ease infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: scale(0.7);
+        }
+      }
+
+      /* BUTTONS */
+      .btn {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        padding: 6px 11px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: transparent;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+
+      .btn:hover {
+        border-color: var(--border-active);
+        color: var(--text);
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn-start {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #0e0e0f;
+        font-weight: 500;
+      }
+      .btn-start:hover {
+        background: #c8ef6a;
+        border-color: #c8ef6a;
+        color: #0e0e0f;
+      }
+      .btn-stop {
+        border-color: var(--red);
+        color: var(--red);
+        background: var(--red-dim);
+      }
+      .btn-stop:hover {
+        background: rgba(255, 95, 95, 0.18);
+      }
+      .btn-remove {
+        padding: 6px 8px;
+        color: var(--text-dim);
+      }
+      .btn-remove:hover {
+        color: var(--red);
+        border-color: var(--red);
+      }
+
+      .btn-generate {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 500;
+        padding: 8px 14px;
+      }
+
+      .btn-generate:hover {
+        background: var(--accent-dim2);
+      }
+      .btn-generate:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* TRANSCRIPT */
+      .transcript-wrapper {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .transcript-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .transcript-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .word-count {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text-dim);
+      }
+
+      .output {
+        padding: 16px 14px;
+        font-size: 14px;
+        line-height: 1.85;
+        color: var(--text);
+        font-weight: 300;
+        white-space: pre-wrap;
+        overflow-y: auto;
+        min-height: 160px;
+        max-height: 260px;
+        font-family: var(--sans);
+      }
+
+      .output.empty {
+        color: var(--text-dim);
+        font-style: italic;
+        font-size: 13px;
+      }
+      .output::-webkit-scrollbar {
+        width: 3px;
+      }
+      .output::-webkit-scrollbar-thumb {
+        background: var(--border-active);
+        border-radius: 2px;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        background: var(--accent);
+        margin-left: 2px;
+        vertical-align: middle;
+        animation: blink 1s ease infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
+      /* ---- NOTES SECTION ---- */
+      .notes-section {
+        border-top: 1px solid var(--border);
+        background: var(--surface3);
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .notes-section-header {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 10px 14px 8px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .notes-input {
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 300;
+        color: var(--text);
+        background: transparent;
+        border: none;
+        outline: none;
+        padding: 12px 14px;
+        min-height: 80px;
+        max-height: 160px;
+        resize: vertical;
+        line-height: 1.7;
+        border-bottom: 1px solid var(--border);
+        width: 100%;
+      }
+
+      .notes-input::placeholder {
+        color: var(--text-dim);
+        font-style: italic;
+      }
+
+      .notes-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+      }
+
+      .notes-hint {
+        font-size: 12px;
+        color: var(--text-dim);
+        font-weight: 300;
+      }
+
+      /* ---- NOTES PREVIEW ---- */
+      .notes-preview {
+        display: none;
+        border-top: 1px solid var(--border);
+        padding: 14px;
+      }
+
+      .preview-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .preview-badge {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--accent-dim);
+        border: 1px solid rgba(212, 245, 122, 0.2);
+        border-radius: 20px;
+        padding: 2px 8px;
+        width: fit-content;
+      }
+
+      .preview-title {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--text);
+        line-height: 1.4;
+      }
+
+      .preview-summary {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.7;
+        padding: 10px 12px;
+        background: var(--surface2);
+        border-radius: 6px;
+        border-left: 2px solid var(--accent);
+      }
+
+      .preview-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-top: 6px;
+      }
+
+      .preview-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .preview-list li {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 300;
+        padding-left: 12px;
+        position: relative;
+        line-height: 1.6;
+      }
+
+      .preview-list li::before {
+        content: "·";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+      }
+
+      .preview-body {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.7;
+      }
+
+      .preview-terms {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .preview-term-row {
+        display: flex;
+        gap: 8px;
+        font-size: 12px;
+        align-items: baseline;
+      }
+
+      .term-name {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent);
+        flex-shrink: 0;
+      }
+
+      .term-def {
+        color: var(--text-muted);
+        font-weight: 300;
+      }
+
+      .preview-downloaded {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--accent);
+        background: var(--accent-dim);
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(212, 245, 122, 0.2);
+        margin-top: 4px;
+      }
+
+      /* HINT */
+      .hint {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 11px 14px;
+        border-radius: 8px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 300;
+      }
+
+      .hint svg {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        margin-top: 2px;
+        color: var(--accent);
+      }
+
+      /* ---- MODAL OVERLAY ---- */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-overlay.open {
+        display: flex;
+      }
+
+      .modal-box {
+        background: var(--surface);
+        border: 1px solid var(--border-active);
+        border-radius: 16px;
+        padding: 28px 24px 24px;
+        width: 100%;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        animation: modalIn 0.2s ease;
+      }
+
+      @keyframes modalIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px) scale(0.97);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .modal-title {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .modal-choices {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .modal-choice {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 14px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        cursor: pointer;
+        transition: all 0.18s ease;
+        text-align: left;
+      }
+
+      .modal-choice:hover {
+        border-color: var(--border-active);
+        background: var(--surface3);
+      }
+
+      .modal-choice.yt:hover {
+        border-color: rgba(255, 80, 80, 0.4);
+        background: rgba(255, 80, 80, 0.05);
+      }
+
+      .modal-choice.live:hover {
+        border-color: rgba(212, 245, 122, 0.3);
+        background: var(--accent-dim);
+      }
+
+      .choice-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .choice-icon.yt {
+        background: rgba(255, 80, 80, 0.12);
+        border: 1px solid rgba(255, 80, 80, 0.25);
+      }
+
+      .choice-icon.live {
+        background: var(--accent-dim);
+        border: 1px solid rgba(212, 245, 122, 0.25);
+      }
+
+      .choice-icon svg {
+        width: 17px;
+        height: 17px;
+      }
+
+      .choice-text {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .choice-label {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text);
+        letter-spacing: 0.02em;
+      }
+
+      .choice-sub {
+        font-size: 12px;
+        color: var(--text-dim);
+        font-weight: 300;
+        line-height: 1.5;
+      }
+
+      .modal-cancel {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-dim);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 4px 0;
+        text-align: center;
+        letter-spacing: 0.03em;
+        transition: color 0.15s ease;
+      }
+
+      .modal-cancel:hover {
+        color: var(--text-muted);
+      }
+
+      /* URL INPUT MODAL */
+      .url-input-row {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .url-field {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text);
+        background: var(--surface2);
+        border: 1px solid var(--border-active);
+        border-radius: 8px;
+        padding: 10px 12px;
+        outline: none;
+        width: 100%;
+        transition: border-color 0.15s ease;
+      }
+
+      .url-field:focus {
+        border-color: rgba(212, 245, 122, 0.5);
+      }
+
+      .url-field::placeholder {
+        color: var(--text-dim);
+      }
+
+      .url-submit {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--accent);
+        background: var(--accent-dim);
+        color: var(--accent);
+        cursor: pointer;
+        transition: all 0.18s ease;
+        letter-spacing: 0.03em;
+      }
+
+      .url-submit:hover {
+        background: var(--accent-dim2);
+      }
+
+      /* FOOTER */
+      footer {
+        padding: 18px 0;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 0.04em;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="4" height="10" rx="1.5" fill="#0e0e0f" />
+            <rect x="8" y="4" width="4" height="6" rx="1.5" fill="#0e0e0f" />
+          </svg>
+        </div>
+        <span class="logo-name">transcribe</span>
+      </div>
+
+      <div class="header-right">
+        <div class="api-key-wrap">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="6.5" cy="9.5" r="3.5" />
+            <path d="M9.5 6.5L14 2M12 2h2v2" />
+          </svg>
+          <input
+            type="password"
+            id="apiKeyInput"
+            placeholder="Anthropic API key (sk-ant-...)"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <button id="addSession">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+          Add Session
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <p class="page-title">Live Transcription · Multi-Tab + AI Notes</p>
+
+      <div class="hint">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 7v4M8 5.5v.5" />
+        </svg>
+        Add one session per video tab. After recording, enter your Anthropic API key above and click
+        <strong style="color: var(--text); font-weight: 500">&nbsp;Generate Notes PDF&nbsp;</strong>
+        to get structured study notes exported as PDF.
+      </div>
+
+      <!-- Empty state shown when no sessions exist -->
+      <div id="empty-state">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="7" height="18" rx="2" />
+            <rect x="14" y="6" width="7" height="12" rx="2" />
+          </svg>
+        </div>
+        <p class="empty-title">No sessions yet</p>
+        <p class="empty-sub">Add a session to start transcribing — from YouTube or any live video tab.</p>
+        <button class="btn-empty-add" id="addSessionEmpty">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3v10M3 8h10" />
+          </svg>
+          Add Session
+        </button>
+      </div>
+
+      <div id="sessions-container"></div>
+    </main>
+
+    <footer>whisper · fastapi · claude api · jspdf · local</footer>
+
+    <!-- ===== SOURCE PICKER MODAL ===== -->
+    <div class="modal-overlay" id="sourceModal">
+      <div class="modal-box" id="sourceModalBox">
+        <p class="modal-title">Choose source</p>
+        <div class="modal-choices">
+
+          <!-- YouTube option -->
+          <button class="modal-choice yt" id="ytOption">
+            <div class="choice-icon yt">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" fill="#ff5050" opacity="0.9"/>
+                <polygon points="9.75,15.02 15.5,12 9.75,8.98 9.75,15.02" fill="white"/>
+              </svg>
+            </div>
+            <div class="choice-text">
+              <span class="choice-label">YouTube Video</span>
+              <span class="choice-sub">Paste a YouTube URL — transcript fetched automatically via API.</span>
+            </div>
+          </button>
+
+          <!-- Live / other website option -->
+          <button class="modal-choice live" id="otherOption">
+            <div class="choice-icon live">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <circle cx="12" cy="12" r="9" stroke="var(--accent)" />
+                <path d="M12 3c-2.5 3-4 5.5-4 9s1.5 6 4 9" stroke="var(--accent)" />
+                <path d="M12 3c2.5 3 4 5.5 4 9s-1.5 6-4 9" stroke="var(--accent)" />
+                <path d="M3 12h18" stroke="var(--accent)" />
+              </svg>
+            </div>
+            <div class="choice-text">
+              <span class="choice-label">Video from any website</span>
+              <span class="choice-sub">Share your tab with audio — records and transcribes in real-time.</span>
+            </div>
+          </button>
+
+        </div>
+        <button class="modal-cancel" id="modalCancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- ===== YT URL INPUT MODAL ===== -->
+    <div class="modal-overlay" id="ytUrlModal">
+      <div class="modal-box">
+        <p class="modal-title">YouTube Video URL</p>
+        <div class="url-input-row">
+          <input
+            type="url"
+            id="ytUrlInput"
+            class="url-field"
+            placeholder="https://www.youtube.com/watch?v=..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button class="url-submit" id="ytUrlSubmit">Fetch Transcript →</button>
+        </div>
+        <button class="modal-cancel" id="ytUrlCancel">Cancel</button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
