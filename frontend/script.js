@@ -324,10 +324,8 @@ async function createYouTubeSession(url) {
   output.classList.remove("empty");
 
   try {
-    const res = await fetch(`${api}/youtube`, {
+    const res = await fetch(`${api}/youtube?url=${encodeURIComponent(url)}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
     });
 
     const data = await res.json();
