@@ -68,23 +68,22 @@ def process_audio_stream(audio_bytes: bytes):
 
 def download_youtube_audio_stream(url):
     import yt_dlp
-    import io
-
-    buffer = io.BytesIO()
+    import requests
 
     ydl_opts = {
-        'format': 'bestaudio',
-        'outtmpl': '-',
+        'format': 'worstaudio/worst',  # lowest quality audio
         'quiet': True,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(url, download=False)
-        audio_url = result['url']
+        
+        # Prefer the direct URL from the selected format
+        audio_url = result.get('url') or result['formats'][0]['url']
 
-    # stream download
-    import requests
-    response = requests.get(audio_url)
+    response = requests.get(audio_url, headers={
+        "User-Agent": "Mozilla/5.0"  # some sources require this
+    })
     return response.content
 
 @app.post("/youtube")
